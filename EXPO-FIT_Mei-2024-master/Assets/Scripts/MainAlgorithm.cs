@@ -22,7 +22,7 @@ public class MainAlgorithm : MonoBehaviour
 
     public TMP_Text questionUI, answerUI, player1PtsUI, player2PtsUI, isPlayer1RightUI, isPlayer2RightUI;   // Variable for UI Text
 
-    public CheckScoreAkhir checkScoreAkhir;
+    public GameObject AlgorithmGO;
 
 
 
@@ -173,47 +173,25 @@ public class MainAlgorithm : MonoBehaviour
     // Execute if player give right respond
     void PlayerIsRight(int player)
     {
+        int maxPoint = 3;
         // If Player is right, he/she will get points
 
         // Execute if the right player is player 1
         if (player == 1)
         {
             player1Points += 1;             // Give point for player 1
-            isPlayer1RightUI.SetText("V");
-            checkScoreAkhir.UpdatePlayer1Score(player1Points);
-
-            // Set Player 1 as winner if the score is higher
-            if (player1Points > player2Points)
-            {
-                FindObjectOfType<WinLose>().SetPlayer1Result(GameResult.Winner);
-                FindObjectOfType<WinLose>().SetPlayer2Result(GameResult.Lose);
-            }
-            // Set Player 1 and Player 2 as draw if the scores are equal
-            else if (player1Points == player2Points)
-            {
-                FindObjectOfType<WinLose>().SetPlayer1Result(GameResult.Draw);
-                FindObjectOfType<WinLose>().SetPlayer2Result(GameResult.Draw);
-            }
+            isPlayer1RightUI.SetText("O");
         }
         // Execute if the right player is player 2
         else if (player == 2)
         {
             player2Points += 1;             // Give point for player 2
-            isPlayer2RightUI.SetText("V");
-            checkScoreAkhir.UpdatePlayer2Score(player2Points);
+            isPlayer2RightUI.SetText("O");
+        }
 
-            // Set Player 2 as winner if the score is higher
-            if (player2Points > player1Points)
-            {
-                FindObjectOfType<WinLose>().SetPlayer1Result(GameResult.Lose);
-                FindObjectOfType<WinLose>().SetPlayer2Result(GameResult.Winner);
-            }
-            // Set Player 1 and Player 2 as draw if the scores are equal
-            else if (player1Points == player2Points)
-            {
-                FindObjectOfType<WinLose>().SetPlayer1Result(GameResult.Draw);
-                FindObjectOfType<WinLose>().SetPlayer2Result(GameResult.Draw);
-            }
+        if (player1Points == maxPoint || player2Points == maxPoint)
+        {
+            AlgorithmGO.GetComponent<CheckScoreAkhir>().CheckPointCondition(player1Points, player2Points, AlgorithmGO);
         }
     }
 
@@ -245,9 +223,4 @@ public class MainAlgorithm : MonoBehaviour
         StopCoroutine(waitAnswer);      // Stop coroutine, do this to avoid bug
         ShowQuestion();                 // Run new question
     }
-
-
-
-
-
 }
