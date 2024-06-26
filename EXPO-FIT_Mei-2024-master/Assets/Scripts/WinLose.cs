@@ -1,10 +1,13 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class WinLose : MonoBehaviour
 {
-    public TMP_Text player1ResultText; // Text to display Player 1's result (Winner/Draw/Lose)
-    public TMP_Text player2ResultText; // Text to display Player 2's result (Winner/Draw/Lose)
+    public Image player1ResultImage; // Text to display Player 1's result (Winner/Draw/Lose)
+    public Image player2ResultImage; // Text to display Player 2's result (Winner/Draw/Lose)
+
+    public Sprite win, lose;
 
     // Function to set the result text for Player 1
     public void SetPlayer1Result(GameResult result)
@@ -12,13 +15,13 @@ public class WinLose : MonoBehaviour
         switch (result)
         {
             case GameResult.Winner:
-                player1ResultText.SetText("Winner");
+                player1ResultImage.sprite = win;
                 break;
             case GameResult.Draw:
-                player1ResultText.SetText("Draw");
+                
                 break;
             case GameResult.Lose:
-                player1ResultText.SetText("Lose");
+                player1ResultImage.sprite = lose;
                 break;
             default:
                 break;
@@ -31,13 +34,13 @@ public class WinLose : MonoBehaviour
         switch (result)
         {
             case GameResult.Winner:
-                player2ResultText.SetText("Winner");
+                player2ResultImage.sprite = win;
                 break;
             case GameResult.Draw:
-                player2ResultText.SetText("Draw");
+                
                 break;
             case GameResult.Lose:
-                player2ResultText.SetText("Lose");
+                player2ResultImage.sprite = lose;
                 break;
             default:
                 break;
