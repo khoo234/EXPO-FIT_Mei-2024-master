@@ -1229,7 +1229,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &455190452
 RectTransform:
   m_ObjectHideFlags: 0
@@ -3320,12 +3320,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   player1ResultImage: {fileID: 1129611918}
   player2ResultImage: {fileID: 2030142278}
-  rubahJantan: {fileID: 0}
-  rubahBetina: {fileID: 0}
-  jantanAngry: {fileID: 0}
-  jantanHappy: {fileID: 0}
-  betinaAngry: {fileID: 0}
-  betinaHappy: {fileID: 0}
+  rubahJantan: {fileID: 1429220217}
+  rubahBetina: {fileID: 1898491955}
+  jantanAngry: {fileID: 21300000, guid: 8df6b5b0a74ce3e4d9abeed818d367ae, type: 3}
+  jantanHappy: {fileID: 21300000, guid: c1ee395457ac1c348a49112c71b20b59, type: 3}
+  betinaAngry: {fileID: 21300000, guid: de2231c8b114ef046a1a68ab920cac93, type: 3}
+  betinaHappy: {fileID: 21300000, guid: b47eff6a687e475448898fafc99e7285, type: 3}
   win: {fileID: 21300000, guid: 3760abd8fc46677419af07140867a3cc, type: 3}
   lose: {fileID: 21300000, guid: 08f5327a5794b474c907bf02a6eb1200, type: 3}
 --- !u!114 &1576312645
