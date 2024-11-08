@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
+using System.IO.Ports;
 
 public class MainAlgorithm : MonoBehaviour
 {
     public int totalQuestion;           // Variable for max question
-    public float delayPerAnswer;        // Variable for delay between answer that show
+    public float delayPerAnswer = 3f;        // Variable for delay between answer that show
 
     public int maxPoint = 3;
 
@@ -43,6 +44,7 @@ public class MainAlgorithm : MonoBehaviour
 
     int rightPlayer;
 
+    SerialPort serialPort = new SerialPort("COM7", 115200); // Adjust COM port as needed
 
 
     // Start is called before the first frame update
@@ -55,6 +57,19 @@ public class MainAlgorithm : MonoBehaviour
         isPlayer2CanAnswer = true;
 
         totalQuestion = images.Length;
+
+        try
+        {
+            // Initialize and open the serial port
+            serialPort = new SerialPort("COM7", 115200);
+            serialPort.ReadTimeout = 500; // Set a timeout for reading
+            serialPort.Open();
+            Debug.Log("Serial port opened successfully.");
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError("Failed to open serial port: " + e.Message);
+        }
     }
 
     // Update is called every frame(?)
@@ -84,14 +99,7 @@ public class MainAlgorithm : MonoBehaviour
     // Function for input and show question
     void ShowQuestion()
     {
-        question = Random.Range(1, totalQuestion);      // Create question from the range between 0 and maximum questions
-        maxWrongAnswer = Random.Range(0, 4);            // Create maximum wrong answer every wave
-        
-        QuestionImage.sprite = images[question];
-        
         waitAnswer = StartCoroutine(WaitForAnswer());   // Execute and input value of time between answers
-
-
     }
 
     // Function for input and show answer
@@ -133,12 +141,17 @@ public class MainAlgorithm : MonoBehaviour
               NextQuestion();
         }
         
-        ShowAnswer();   // Execute the function for show answer
 
         yield return new WaitForSeconds(delayPerAnswer);        // delay between answers
         rubahJantan.GetComponent<RubahScript>().ChangeFace("idle");
         rubahBetina.GetComponent<RubahScript>().ChangeFace("idle");
+                
+        question = Random.Range(1, totalQuestion);      // Create question from the range between 0 and maximum questions
+        maxWrongAnswer = Random.Range(0, 4);            // Create maximum wrong answer every wave
+        
+        QuestionImage.sprite = images[question];
 
+        ShowAnswer();   // Execute the function for show answer
         // When delay is finish, 
         // Make sure player can answer
         isPlayer1CanAnswer = true;
@@ -151,21 +164,28 @@ public class MainAlgorithm : MonoBehaviour
     // Function for get input from player one
     void PlayerOne()
     {
-        // Only run if player 1 isn't give wrong respond for that question
-        if(isPlayer1CanAnswer)
+        if (isPlayer1CanAnswer && serialPort.IsOpen)
         {
-            // THIS MUST CHANGE, because the goals is respond with our HEAD, not the keyboard
-
-            // Execute if player 1 think answer == question
-            if(Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.D))
+            try
             {
-                GuestAnswer(1, false);
+                if (serialPort.BytesToRead > 0) // Check if there's data in the buffer
+                {
+                    string input = serialPort.ReadLine().Trim();
+                    Debug.Log("Received input: " + input); // Should show "TEST" from the basic sketch
+
+                    if (input == "NOD")
+                    {
+                        GuestAnswer(1, true);
+                    }
+                    else if (input == "SHAKE")
+                    {
+                        GuestAnswer(1, false);
+                    }
+                }
             }
-
-            // Execute if player 1 think answer != question
-            if(Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.S))
+            catch (System.Exception ex)
             {
-                GuestAnswer(1, true);
+                Debug.LogWarning("Serial read error: " + ex.Message); // Capture errors
             }
         }
     }
@@ -174,22 +194,22 @@ public class MainAlgorithm : MonoBehaviour
     void PlayerTwo()
     {
         // Only run if player 2 isn't give wrong respond for that question
-        if(isPlayer2CanAnswer)
+        if (isPlayer2CanAnswer)
         {
             // THIS MUST CHANGE, because the goals is respond with our HEAD, not the keyboard
 
             // Execute if player 2 think answer == question
-            if(Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
+            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
             {
                 GuestAnswer(2, false);
             }
 
             // Execute if player 2 think answer != question
-            if(Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+            if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
             {
                 GuestAnswer(2, true);
-            }   
-        }     
+            }
+        }
     }
 
     // Function for check respond from player
@@ -230,7 +250,8 @@ public class MainAlgorithm : MonoBehaviour
     // Execute if player give right respond
     void PlayerIsRight(int player)
     {
-
+        isPlayer1CanAnswer = false;
+        isPlayer2CanAnswer = false;
         rightSFX.Play();
         // If Player is right, he/she will get points
 
@@ -290,5 +311,13 @@ public class MainAlgorithm : MonoBehaviour
             StopCoroutine(waitAnswer);                          // Stop all coroutine, do this to avoid bug
         }
         ShowQuestion();                 // Run new question
+    }
+
+    void OnConnectionEvent(bool success)
+    {
+        if (success)
+            Debug.Log("Arduino connected!");
+        else
+            Debug.Log("Failed to connect to Arduino.");
     }
 }
