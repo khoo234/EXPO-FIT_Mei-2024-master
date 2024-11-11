@@ -4,36 +4,39 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 using System.IO.Ports;
+using M2MqttUnity;
+using uPLibrary.Networking.M2Mqtt;
 
 public class MainAlgorithm : MonoBehaviour
 {
-    public int totalQuestion;           // Variable for max question
-    public float delayPerAnswer = 3f;        // Variable for delay between answer that show
+    private M2MqttUnity.Examples.M2MqttUnityTest mqttHandler;
+
+    public int totalQuestion; // Variable for max question
+    public float delayPerAnswer = 3f;  // Variable for delay between answer that show
 
     public int maxPoint = 3;
 
     [SerializeField] bool Show_QA_text = false;
+
+    [SerializeField] int question; // Variable for shown question
+    [SerializeField] int answer; // Variable for shown answer
+
+    [SerializeField] int player1Points, player2Points; // Variable for points of both players
     
+    bool isPlayer1CanAnswer, isPlayer2CanAnswer; // Variable that use for ban player after give wrong respond
 
-    [SerializeField] int question;      // Variable for shown question
-    [SerializeField] int answer;        // Variable for shown answer
+    Coroutine waitAnswer = null;// Variable for IEnumerator WaitForAnswer(). Use this so we can use StopCoroutine
 
-    [SerializeField] int player1Points, player2Points;      // Variable for points of both players
-    
-    bool isPlayer1CanAnswer, isPlayer2CanAnswer;            // Variable that use for ban player after give wrong respond
-
-    Coroutine waitAnswer = null;                            // Variable for IEnumerator WaitForAnswer(). Use this so we can use StopCoroutine
-
-    int maxWrongAnswer;                                     // Variable for maximum wrong answer every wave
+    int maxWrongAnswer; // Variable for maximum wrong answer every wave
 
     public TMP_Text questionUI, answerUI, player1PtsUI, player2PtsUI, isPlayer1RightUI, isPlayer2RightUI;   // Variable for UI Text
 
     public GameObject AlgorithmGO;
 
-    public Sprite[] images;                 // Array of images
+    public Sprite[] images; // Array of images
 
-    public Image QuestionImage;          // Image Component for question
-    public Image AnswerImage;           // Image Component for answer
+    public Image QuestionImage; // Image Component for question
+    public Image AnswerImage; // Image Component for answer
 
     public GameObject rubahJantan, rubahBetina;
 
@@ -44,32 +47,35 @@ public class MainAlgorithm : MonoBehaviour
 
     int rightPlayer;
 
-    SerialPort serialPort = new SerialPort("COM7", 115200); // Adjust COM port as needed
-
+    // UNCOMMENT THIS 1 CODE BELOW TO USE SERIAL PORT   
+    // SerialPort serialPort = new SerialPort("COM3", 115200); // Adjust COM port as needed
 
     // Start is called before the first frame update
     void Start()
     {
-        ShowQuestion();         // Show 1st Question
+        ShowQuestion(); // Show 1st Question
 
         // Make sure both player can respond question
         isPlayer1CanAnswer = true;
         isPlayer2CanAnswer = true;
-
         totalQuestion = images.Length;
 
-        try
-        {
-            // Initialize and open the serial port
-            serialPort = new SerialPort("COM7", 115200);
-            serialPort.ReadTimeout = 500; // Set a timeout for reading
-            serialPort.Open();
-            Debug.Log("Serial port opened successfully.");
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError("Failed to open serial port: " + e.Message);
-        }
+        mqttHandler = FindObjectOfType<M2MqttUnity.Examples.M2MqttUnityTest>();
+
+        // UNCOMMENT THE CODE BELOW TO USE SERIAL PORT
+
+        //try
+        //{
+        //    // Initialize and open the serial port
+        //    serialPort = new SerialPort("COM3", 115200);
+        //    serialPort.ReadTimeout = 500; // Set a timeout for reading
+        //    serialPort.Open();
+        //    Debug.Log("Serial port opened successfully.");
+        //}
+        //catch (System.Exception e)
+        //{
+        //    Debug.LogError("Failed to open serial port: " + e.Message);
+        //}
     }
 
     // Update is called every frame(?)
@@ -83,23 +89,23 @@ public class MainAlgorithm : MonoBehaviour
 
         if(Show_QA_text)
         {
-            questionUI.SetText(question.ToString());            // Set text for question
-            answerUI.SetText(answer.ToString());                // Set text for answer
+            questionUI.SetText(question.ToString()); // Set text for question
+            answerUI.SetText(answer.ToString()); // Set text for answer
         }else{
-            questionUI.SetText("");            // Set text for question
-            answerUI.SetText("");                // Set text for answer
+            questionUI.SetText(""); // Set text for question
+            answerUI.SetText(""); // Set text for answer
         }
 
         
-        player1PtsUI.SetText(player1Points.ToString());     // Set text for 1st player points
-        player2PtsUI.SetText(player2Points.ToString());     // Set text for 2nd player poimts
+        player1PtsUI.SetText(player1Points.ToString()); // Set text for 1st player points
+        player2PtsUI.SetText(player2Points.ToString()); // Set text for 2nd player poimts
         
     }
 
     // Function for input and show question
     void ShowQuestion()
     {
-        waitAnswer = StartCoroutine(WaitForAnswer());   // Execute and input value of time between answers
+        waitAnswer = StartCoroutine(WaitForAnswer()); // Execute and input value of time between answers
     }
 
     // Function for input and show answer
@@ -116,7 +122,7 @@ public class MainAlgorithm : MonoBehaviour
             rubahBetina.GetComponent<RubahScript>().ChangeFace("idle");
         }
         
-        answer = Random.Range(0, totalQuestion);        // Create random answer that ranged between 0 and maximum questions
+        answer = Random.Range(0, totalQuestion); // Create random answer that ranged between 0 and maximum questions
         wrongPlayer = 0;
 
 
@@ -146,8 +152,8 @@ public class MainAlgorithm : MonoBehaviour
         rubahJantan.GetComponent<RubahScript>().ChangeFace("idle");
         rubahBetina.GetComponent<RubahScript>().ChangeFace("idle");
                 
-        question = Random.Range(1, totalQuestion);      // Create question from the range between 0 and maximum questions
-        maxWrongAnswer = Random.Range(0, 4);            // Create maximum wrong answer every wave
+        question = Random.Range(1, totalQuestion); // Create question from the range between 0 and maximum questions
+        maxWrongAnswer = Random.Range(0, 4); // Create maximum wrong answer every wave
         
         QuestionImage.sprite = images[question];
 
@@ -164,52 +170,99 @@ public class MainAlgorithm : MonoBehaviour
     // Function for get input from player one
     void PlayerOne()
     {
-        if (isPlayer1CanAnswer && serialPort.IsOpen)
-        {
-            try
-            {
-                if (serialPort.BytesToRead > 0) // Check if there's data in the buffer
-                {
-                    string input = serialPort.ReadLine().Trim();
-                    Debug.Log("Received input: " + input); // Should show "TEST" from the basic sketch
 
-                    if (input == "NOD")
-                    {
-                        GuestAnswer(1, true);
-                    }
-                    else if (input == "SHAKE")
-                    {
-                        GuestAnswer(1, false);
-                    }
-                }
-            }
-            catch (System.Exception ex)
+        if (mqttHandler != null && isPlayer1CanAnswer)
+        {
+            string input = mqttHandler.latestMessage;
+
+            if (input == "PLAYER1_NOD")
             {
-                Debug.LogWarning("Serial read error: " + ex.Message); // Capture errors
+                GuestAnswer(1, true);
+                mqttHandler.latestMessage = "";  // Clear the message to avoid repeated triggers
+            }
+            else if (input == "PLAYER1_SHAKE")
+            {
+                GuestAnswer(1, false);
+                mqttHandler.latestMessage = "";  // Clear the message to avoid repeated triggers
             }
         }
+
+        // UNCOMMENT THE CODE BELOW TO USE SERIAL PORT
+
+        //if (isPlayer1CanAnswer && serialPort.IsOpen)
+        //{
+        //    try
+        //    {
+        //        if (serialPort.BytesToRead > 0) // Check if there's data in the buffer
+        //        {
+        //            string input = serialPort.ReadLine().Trim();
+        //            Debug.Log("Received input: " + input);
+
+        //            if (input == "PLAYER1_NOD")
+        //            {
+        //                GuestAnswer(1, true);
+        //            }
+        //            else if (input == "PLAYER1_SHAKE")
+        //            {
+        //                GuestAnswer(1, false);
+        //            }
+        //        }
+        //    }
+        //    catch (System.Exception ex)
+        //    {
+        //        Debug.LogWarning("Serial read error: " + ex.Message); // Capture errors
+        //    }
+        //}
     }
 
     // Function for get input from player two
     void PlayerTwo()
     {
-        // Only run if player 2 isn't give wrong respond for that question
-        if (isPlayer2CanAnswer)
+
+        if (mqttHandler != null && isPlayer2CanAnswer)
         {
-            // THIS MUST CHANGE, because the goals is respond with our HEAD, not the keyboard
+            string input = mqttHandler.latestMessage;
 
-            // Execute if player 2 think answer == question
-            if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.RightArrow))
-            {
-                GuestAnswer(2, false);
-            }
-
-            // Execute if player 2 think answer != question
-            if (Input.GetKeyDown(KeyCode.UpArrow) || Input.GetKeyDown(KeyCode.DownArrow))
+            if (input == "PLAYER2_NOD")
             {
                 GuestAnswer(2, true);
+                Debug.Log("Player 2 NODDED");
+                mqttHandler.latestMessage = "";  // Clear the message to avoid repeated triggers
+            }
+            else if (input == "PLAYER2_SHAKE")
+            {
+                GuestAnswer(2, false);
+                Debug.Log("Player 2 SHAKES");
+                mqttHandler.latestMessage = "";  // Clear the message to avoid repeated triggers
             }
         }
+
+        // UNCOMMENT THE CODE BELOW TO USE SERIAL PORT
+
+        //if (isPlayer2CanAnswer && serialPort.IsOpen)
+        //{
+        //    try
+        //    {
+        //        if (serialPort.BytesToRead > 0) // Check if there's data in the buffer
+        //        {
+        //            string input = serialPort.ReadLine().Trim();
+        //            Debug.Log("Received input: " + input);
+
+        //            if (input == "PLAYER2_NOD")
+        //            {
+        //                GuestAnswer(2, true);
+        //            }
+        //            else if (input == "PLAYER2_SHAKE")
+        //            {
+        //                GuestAnswer(2, false);
+        //            }
+        //        }
+        //    }
+        //    catch (System.Exception ex)
+        //    {
+        //        Debug.LogWarning("Serial read error: " + ex.Message); // Capture errors
+        //    }
+        //}
     }
 
     // Function for check respond from player
@@ -229,13 +282,13 @@ public class MainAlgorithm : MonoBehaviour
             // Execute if quesstion != answer
             else
             {
-                maxWrongAnswer -= 1;                                // Decrease the chance that next question, question != answer
+                maxWrongAnswer -= 1;// Decrease the chance that next question, question != answer
                 if(waitAnswer != null)
                 {
-                    StopCoroutine(waitAnswer);                          // Stop all coroutine, do this to avoid bug
+                    StopCoroutine(waitAnswer);// Stop all coroutine, do this to avoid bug
                 }
                 
-                waitAnswer = StartCoroutine(WaitForAnswer());       // Start new coroutine
+                waitAnswer = StartCoroutine(WaitForAnswer());// Start new coroutine
             }
         }
         // Execute if player give wrong respond
@@ -247,7 +300,6 @@ public class MainAlgorithm : MonoBehaviour
     }
 
     // Execute if player give right respond
-    // Execute if player give right respond
     void PlayerIsRight(int player)
     {
         isPlayer1CanAnswer = false;
@@ -258,7 +310,7 @@ public class MainAlgorithm : MonoBehaviour
         // Execute if the right player is player 1
         if (player == 1)
         {
-            player1Points += 1;             // Give point for player 1
+            player1Points += 1; // Give point for player 1
             isPlayer1RightUI.SetText("O");
             rubahJantan.GetComponent<RubahScript>().ChangeFace("happy");
             rightPlayer = 1;
@@ -266,7 +318,7 @@ public class MainAlgorithm : MonoBehaviour
         // Execute if the right player is player 2
         else if (player == 2)
         {
-            player2Points += 1;             // Give point for player 2
+            player2Points += 1; // Give point for player 2
             isPlayer2RightUI.SetText("O");
             rubahBetina.GetComponent<RubahScript>().ChangeFace("happy");
             rightPlayer = 2;
@@ -288,14 +340,14 @@ public class MainAlgorithm : MonoBehaviour
         // Execute if the wrong one is player 1
         if(player == 1)
         {
-            isPlayer1CanAnswer = false;     // Ban player 1
+            isPlayer1CanAnswer = false; // Ban player 1
             isPlayer1RightUI.SetText("X");
             rubahJantan.GetComponent<RubahScript>().ChangeFace("sad");
         }
         // Execute if the wrong one is player 2
         else if(player == 2)
         {
-            isPlayer2CanAnswer = false;     // Ban player 2
+            isPlayer2CanAnswer = false; // Ban player 2
             isPlayer2RightUI.SetText("X");
             rubahBetina.GetComponent<RubahScript>().ChangeFace("sad");
         }
@@ -308,16 +360,16 @@ public class MainAlgorithm : MonoBehaviour
     {
         if(waitAnswer != null)
         {
-            StopCoroutine(waitAnswer);                          // Stop all coroutine, do this to avoid bug
+            StopCoroutine(waitAnswer); // Stop all coroutine, do this to avoid bug
         }
-        ShowQuestion();                 // Run new question
+        ShowQuestion(); // Run new question
     }
 
     void OnConnectionEvent(bool success)
     {
         if (success)
-            Debug.Log("Arduino connected!");
+            Debug.Log("Controller connected!");
         else
-            Debug.Log("Failed to connect to Arduino.");
+            Debug.Log("Failed to connect to Controller.");
     }
 }
